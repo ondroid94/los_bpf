@@ -1284,7 +1284,7 @@ prepare0: archprepare gcc-plugins
 	$(Q)$(MAKE) $(build)=.
 
 # All the preparing..
-prepare: prepare0 prepare-objtool
+prepare: prepare0 prepare-objtool prepare-resolve_btfids
 
 # Support for using generic headers in asm-generic
 PHONY += asm-generic uapi-asm-generic
@@ -1305,6 +1305,23 @@ else
 	@echo "warning: Cannot use CONFIG_STACK_VALIDATION=y, please install libelf-dev, libelf-devel or elfutils-libelf-devel" >&2
 endif
 endif
+
+ifdef CONFIG_DEBUG_INFO_BTF
+resolve_btfids_target := $(RESOLVE_BTFIDS)
+endif
+
+PHONY += prepare-resolve_btfids
+prepare-resolve_btfids: $(resolve_btfids_target)
+ifeq ($(ERROR_RESOLVE_BTFIDS),1)
+	@echo "error: Cannot generate BTF IDs for CONFIG_DEBUG_INFO_BTF=y, please install libelf-dev, libelf-devel or elfutils-libelf-devel" >&2
+	@false
+endif
+
+$(RESOLVE_BTFIDS): FORCE
+	$(Q)mkdir -p $(abspath $(dir $@))
+	$(Q)$(MAKE) -C $(srctree)/tools/bpf/resolve_btfids \
+		srctree=$(abspath $(srctree)) \
+		O=$(abspath $(objtree))
 
 # Disable clang-specific config options when using a different compiler
 clang-specific-configs := LTO_CLANG CFI_CLANG SHADOW_CALL_STACK INIT_STACK_ALL_ZERO
